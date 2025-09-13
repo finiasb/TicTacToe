@@ -16,21 +16,98 @@ namespace TicTacToeApp
         int CPU = 0;
         int draws = 0;
 
-        public String returnSymbol(int turn)
+        private int Evaluate(string[] board)
         {
-            if (turn % 2 == 1)
+            int[,] winPositions = new int[,]
             {
-                return "X";
+        {0,1,2}, {3,4,5}, {6,7,8}, // linii
+        {0,3,6}, {1,4,7}, {2,5,8}, // coloane
+        {0,4,8}, {2,4,6}           // diagonale
+            };
+
+            for (int i = 0; i < winPositions.GetLength(0); i++)
+            {
+                string a = board[winPositions[i, 0]];
+                string b = board[winPositions[i, 1]];
+                string c = board[winPositions[i, 2]];
+
+                if (a != null && a == b && b == c)
+                {
+                    if (a == "X") return +10;  // jucătorul
+                    if (a == "0") return -10;  // CPU
+                }
             }
-            else
+            return 0; // nimeni nu a câștigat
+        }
+
+        private bool IsMovesLeft(string[] board)
+        {
+            return board.Any(cell => cell == null);
+        }
+        private int Minimax(string[] board, int depth, bool isMax)
+        {
+            int score = Evaluate(board);
+
+            if (score == 10) return score - depth;   // X câștigă
+            if (score == -10) return score + depth;  // 0 câștigă
+            if (!IsMovesLeft(board)) return 0;       // remiză
+
+            if (isMax) // jucătorul X
             {
-                return "0";
+                int best = int.MinValue;
+                for (int i = 0; i < 9; i++)
+                {
+                    if (board[i] == null)
+                    {
+                        board[i] = "X";
+                        best = Math.Max(best, Minimax(board, depth + 1, false));
+                        board[i] = null;
+                    }
+                }
+                return best;
+            }
+            else // CPU (joacă cu "0")
+            {
+                int best = int.MaxValue;
+                for (int i = 0; i < 9; i++)
+                {
+                    if (board[i] == null)
+                    {
+                        board[i] = "0";
+                        best = Math.Min(best, Minimax(board, depth + 1, true));
+                        board[i] = null;
+                    }
+                }
+                return best;
             }
         }
-        
+        private int FindBestMove(string[] board)
+        {
+            int bestVal = int.MaxValue;
+            int bestMove = -1;
+
+            for (int i = 0; i < 9; i++)
+            {
+                if (board[i] == null)
+                {
+                    board[i] = "0";
+                    int moveVal = Minimax(board, 0, true);
+                    board[i] = null;
+
+                    if (moveVal < bestVal)
+                    {
+                        bestMove = i;
+                        bestVal = moveVal;
+                    }
+                }
+            }
+            return bestMove;
+        }
 
 
-    public void checkTheWinner()
+
+
+        public void checkTheWinner()
         {
             for (int i = 0; i < 8; i++)
             {
@@ -62,59 +139,62 @@ namespace TicTacToeApp
                         combination = gameBoard[2] + gameBoard[4] + gameBoard[6];
                         break;
                 }
-                if (combination.Equals("000"))
+                if (combination == "000")
                 {
-                    Reset();
-                    MessageBox.Show("0 has won the game!", "We have a winner!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     CPU++;
                     updateScore();
-                }
-                else if (combination.Equals("XXX"))
-                {
+                    MessageBox.Show("0 has won the game!", "We have a winner!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     Reset();
-                    MessageBox.Show("X has won the game!", "We have a winner!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                }
+                else if (combination == "XXX")
+                {
                     playerOneWin++;
                     updateScore();
+                    MessageBox.Show("X has won the game!", "We have a winner!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    Reset();
                 }
+
                 CheckIfDraw();
             }
         }
         private void Reset()
         {
-            button1.Text = " ";
-            button2.Text = " ";
-            button3.Text = " ";
-            button4.Text = " ";
-            button5.Text = " ";
-            button6.Text = " ";
-            button7.Text = " ";
-            button8.Text = " ";
-            button9.Text = " ";
+            button1.Text = "";
+            button2.Text = "";
+            button3.Text = "";
+            button4.Text = "";
+            button5.Text = "";
+            button6.Text = "";
+            button7.Text = "";
+            button8.Text = "";
+            button9.Text = "";
+
             currentTurn = 0;
-            gameBoard = new string[9];
+            gameBoard = new string[9]; // toate revin la null
         }
+
         private void cpuMove()
         {
-            Random random = new Random();
-
             if (gameBoard.Any(cell => cell == null))
             {
-                int move;
-                do
-                {
-                    move = random.Next(0, 8);
-                } while (gameBoard[move] != null);
+                int move = FindBestMove(gameBoard);
 
-                gameBoard[move] = returnSymbol(currentTurn);
-                UpdateButton(move);
-                checkTheWinner();
-                currentTurn++;
+                if (move != -1)
+                {
+                    gameBoard[move] = "0";   // CPU e mereu 0
+                    UpdateButton(move);
+                    checkTheWinner();
+                    currentTurn++;
+                }
             }
             else
             {
                 Reset();
             }
         }
+
+
+
 
         private void UpdateButton(int index)
         {
@@ -175,13 +255,18 @@ namespace TicTacToeApp
         {
             if (gameBoard[index] == null)
             {
-                gameBoard[index] = returnSymbol(currentTurn);
+                gameBoard[index] = "X";   // jucătorul e mereu X
                 UpdateButton(index);
                 checkTheWinner();
                 currentTurn++;
-                cpuMove();
+
+                if (IsMovesLeft(gameBoard))
+                {
+                    cpuMove();
+                }
             }
         }
+
         private void updateScore()
         {
             label1.Text = "Player 1: " + playerOneWin.ToString();
